@@ -25,7 +25,9 @@ export const verifyToken = async (token) => {
 };
 
 export const signInUser = async (email, password) => {
+  console.log(email, password);
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw new Error(error.message);
-  return data.session?.access_token || '';
+  console.log(data);
+  return { user: data.user, token: data.session.access_token };
 };

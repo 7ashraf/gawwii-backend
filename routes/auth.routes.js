@@ -18,8 +18,8 @@ router.post('/signup', async (req, res) => {
 router.post('/signin', async (req, res) => {
   try {
     const { email, password } = req.body;
-    const token = await signInUser(email, password);
-    res.status(200).json({ token });
+    const data = await signInUser(email, password);
+    res.status(200).json( data );
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

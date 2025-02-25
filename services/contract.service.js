@@ -5,10 +5,15 @@ import { getWalletForUser } from "./walllet.service.js";
 
 const RPC_URL = process.env.RPC_URL;
 const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS;
+const ADMIN_PRIVATE_KEY = process.env.ADMIN_PRIVATE_KEY;
+const ADMIN_PUBLIC_KEY = process.env.ADMIN_PUBLIC_KEY;
+
 
 class ContractService {
     constructor() {
       this.provider = new ethers.providers.JsonRpcProvider(RPC_URL);
+      this.adminWallet = new ethers.Wallet(ADMIN_PRIVATE_KEY, this.provider);
+
     }
   
     async getContractWithSigner(userPrivateKey) {
@@ -16,6 +21,13 @@ class ContractService {
       const sdk = ThirdwebSDK.fromSigner(wallet);
       return await sdk.getContract(CONTRACT_ADDRESS);
     }
+
+    async getContractWithAdminSigner() {
+      const sdk = ThirdwebSDK.fromSigner(this.adminWallet);
+      return await sdk.getContract(CONTRACT_ADDRESS);
+  }
+
+
     async estimateGas(contract, method, args, value = 0) {
       try {
 
@@ -46,9 +58,11 @@ class ContractService {
         if (error.message.includes('execution reverted')) {
           const revertMessage = error.error?.message || 'Transaction would fail';
           throw new Error(`Contract error: ${revertMessage}`);
+        }else{
+          throw new Error('Failed to estimate gas.' + error.message);
+
         }
         
-        throw new Error('Failed to estimate gas. Please check transaction parameters.');
       }
     }
   
@@ -67,7 +81,7 @@ class ContractService {
         const totalCost = gasLimit.mul(gasPrice);
         
         // Check wallet balance
-        const balance = await this.provider.getBalance(userWallet.address);
+        const balance = await this.provider.getBalance(ADMIN_PUBLIC_KEY);
         
         if (balance.lt(totalCost)) {
           throw new Error('Insufficient funds for gas');
@@ -87,19 +101,22 @@ class ContractService {
       try {
         // Get user's wallet
         const userWallet = await getWalletForUser(userId);
-        const contract = await this.getContractWithSigner(userWallet.private_key);
+        const contract = await this.getContractWithAdminSigner();
   
         const transaction = await contract.prepare(method, args);
+
+        const argsWithUser = [...args, userWallet.address];
+
 
         // Validate and get gas estimates
         const { gasLimit, gasPrice } = await this.validateTransaction(
           contract,
           method,
-          args,
+          argsWithUser,
           userWallet
         );
       // Execute the transaction
-      const tx = await contract.call(method, args, {
+      const tx = await contract.call(method, argsWithUser, {
         gasLimit: gasLimit,
         gasPrice: gasPrice
       });
@@ -151,24 +168,26 @@ class ContractService {
 
   
 
-  async purchaseExternalTicket(flightNumber, departure, destination, departureTime, arrivalTime, totalTicket, seatNumbers, seatNumber, userInfo){
+  async purchaseExternalTicket(userId, flightNumber, departure, destination, departureTime, arrivalTime, totalTicket, userInfo){
 
-    const formattedFlightNumber = ethers.BigNumber.from(flightNumber);
-    const formattedDeparture = ethers.BigNumber.from(departure);
+    // const formattedDeparture = ethers.BigNumber.from(departure);
 
-    const formattedDestination = ethers.BigNumber.from(destination);
-    const formattedDepartureTime = ethers.BigNumber.from(departureTime);
-    const fomattedArrivalTime = ethers.BigNumber.from(arrivalTime);
+    // const formattedDestination = ethers.BigNumber.from(destination);
     const formatedTotalTickets = ethers.BigNumber.from(totalTicket);
     const hashedUserInfo = ethers.utils.keccak256(
       ethers.utils.toUtf8Bytes(userInfo)
     );
 
+
+    //need to approve the admin on the tokens
+
     return this.executeTransaction(
       userId,
-      'purcheExternalTicket',
-      [formattedFlightNumber, formattedDeparture, formattedDestination, formattedDepartureTime, fomattedArrivalTime, formatedTotalTickets, hashedUserInfo]
+      'purchaseExternalTicket',
+      [flightNumber, departure, destination, departureTime, arrivalTime, formatedTotalTickets, hashedUserInfo]
     );
+
+
     
 
   }
@@ -227,7 +246,76 @@ class ContractService {
       throw new Error(this.parseError(error));
     }
   }
+
+  async getTicketDetails(userId, ticketId) {
+    try {
+      const wallet = await getWalletForUser(userId);
+      const contract = await this.getContractWithSigner(wallet.private_key);
+
+      const owner = await contract.erc721.ownerOf(ticketId);
+      
+      const metadata = await contract.call("ticketMetadata", [ticketId]);
+
+      const flight = await contract.call("flights", [metadata.flightID]);
+
+      return {
+        id: ticketId,
+        flightNumber: flight.flightNumber,
+        departure: flight.departure,
+        destination: flight.destination,
+        departureTime: new Date(flight.departureTime * 1000),
+        seatNumber: metadata.seatNumber,
+        status: metadata.isUsed ? 'used' : 'active',
+        price: ethers.utils.formatEther(metadata.price),
+        hashedUserInfo: metadata.hashedUserInfo
+      };
+
+
+      
+    } catch (error) {
+      throw new Error(this.parseError(error));
+    }
+  }
+
+  async getUserTickets(userId) {
+    try {
+      const wallet = await getWalletForUser(userId);
+      const contract = await this.getContractWithSigner(wallet.private_key);
+
+      const ownedTokens = await contract.erc721.getOwned(wallet.address);
+
+
+      const tickets = [];
+      for (const token of ownedTokens) {
+        const id = ethers.BigNumber.from(token.metadata.id);
+        const metadata = await contract.call("ticketMetadata", [id]);
+        const flightID = metadata[2];
+        const flight = await contract.call("flights", [flightID]);
+        console.log(flight);
+        
+        tickets.push({
+          id: token.id,
+          flightNumber: flight.flightNumber,
+          departure: flight.departure,
+          destination: flight.destination,
+          departureTime: new Date(flight.departureTime),
+          arrivalTime: new Date(flight.arrivalTime),
+          seatNumber: metadata.seatNumber,
+          status: metadata.isUsed ? 'used' : 'active',
+          price: ethers.utils.formatEther(metadata.price)
+        });
+      }
+      
+      return tickets;
+
+    } catch (error) {
+      console.error("Error getting user tickets:", error);
+      throw new Error(this.parseError(error));
+    }
+  }
   
+
+
 
     
   

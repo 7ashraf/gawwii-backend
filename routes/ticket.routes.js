@@ -53,11 +53,12 @@ router.post('/purchase', authenticateToken, async (req, res) => {
 // Purchase external ticket
 router.post('/purchase-external', authenticateToken, async (req, res) => {
   try {
-    const { flightNumber, departure, destination, departureTime, arrivalTime, totalTicket, seatNumber, userInfo } = req.body;
+    const { flightNumber, departure, destination, departureTime, arrivalTime, totalTicket, userInfo, to } = req.body;
 
-    if (!flightNumber || !departure || !destination || !departureTime || !arrivalTime || !totalTicket || !seatNumber || !userInfo) {
+    if (!flightNumber || !departure || !destination || !departureTime || !arrivalTime || !totalTicket  || !userInfo) {
       return res.status(400).json({ error: 'Missing required parameters.' });
     }
+    console.log("purchase-external", req.userId, flightNumber, departure, destination, departureTime, arrivalTime, totalTicket, userInfo);
 
     const result = await ContractService.purchaseExternalTicket(
       req.userId,
@@ -67,9 +68,10 @@ router.post('/purchase-external', authenticateToken, async (req, res) => {
       departureTime,
       arrivalTime,
       totalTicket,
-      seatNumber,
       userInfo
     );
+
+    console.log("purchase-external", result);
 
     res.json({
       success: true,
@@ -79,6 +81,7 @@ router.post('/purchase-external', authenticateToken, async (req, res) => {
         walletAddress: result.walletAddress
       }
     });
+
 
   } catch (error) {
     console.error('External ticket purchase error:', error);
@@ -149,6 +152,40 @@ router.post('/transfer', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Ticket transfer error:', error);
     res.status(500).json({ error: error.message || 'Failed to transfer ticket' });
+  }
+});
+
+router.get('/me', authenticateToken, async (req, res) => {
+  try {
+    const tickets = await ContractService.getUserTickets(req.userId);
+    res.json({
+      success: true,
+      data: tickets
+    });
+  } catch (error) {
+    console.error('Get user tickets error:', error);
+    res.status(500).json({ 
+      error: error.message || 'Failed to fetch user tickets' 
+    });
+  }
+});
+
+router.get('/:ticketId', authenticateToken, async (req, res) => {
+  try {
+    const ticket = await ContractService.getTicketDetails(
+      req.userId,
+      req.params.ticketId
+    );
+    
+    res.json({
+      success: true,
+      data: ticket
+    });
+  } catch (error) {
+    console.error('Get ticket details error:', error);
+    res.status(500).json({ 
+      error: error.message || 'Failed to fetch ticket details' 
+    });
   }
 });
 
