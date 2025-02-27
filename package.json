@@ -1,11 +1,12 @@
 {
-  "name": "gawwii-backend-",
+  "name": "gawwii-backend",
   "version": "1.0.0",
   "description": "",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon -r dotenv/config server.js"
+    "start": "node -r dotenv/config server.js"
+
   },
   "keywords": [],
   "author": "",
