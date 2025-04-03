@@ -1,7 +1,8 @@
 import express from 'express';
 import ContractService from '../services/contract.service.js';
 import { authenticateToken } from '../middleware/auth.middleware.js';
-
+import { responseTime } from '../middleware/responseTime.middleware.js';
+import { getWalletForEmail } from '../services/walllet.service.js';
 const router = express.Router();
 
 router.post('/purchase', authenticateToken, async (req, res) => {
@@ -51,7 +52,7 @@ router.post('/purchase', authenticateToken, async (req, res) => {
 });
 
 // Purchase external ticket
-router.post('/purchase-external', authenticateToken, async (req, res) => {
+router.post('/purchase-external',responseTime, authenticateToken, async (req, res) => {
   try {
     const { flightNumber, departure, destination, departureTime, arrivalTime, totalTicket, userInfo, to } = req.body;
 
@@ -97,17 +98,18 @@ router.put('/modify', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Missing required parameters.' });
     }
 
+    console.log("modify", req.userId, oldTicketId, newFlightId, flightNumber, departure, destination, departureTime, arrivalTime, totalTickets, value);
+
     const result = await ContractService.modifyTicket(
       req.userId,
       oldTicketId,
       newFlightId,
-      flightNumber,
       departure,
       destination,
       departureTime,
       arrivalTime,
       totalTickets,
-      value || 0
+      0
     );
 
     res.json({
@@ -127,11 +129,33 @@ router.put('/modify', authenticateToken, async (req, res) => {
 // Transfer ticket
 router.post('/transfer', authenticateToken, async (req, res) => {
   try {
-    const { ticketId, toAddress, newUserInfo } = req.body;
+    const { ticketId, toEmail } = req.body;
+    console.log("transfer", req.userId, ticketId, toEmail);
 
-    if (!ticketId || !toAddress || !newUserInfo) {
-      return res.status(400).json({ error: 'Missing required parameters.' });
+
+
+
+    if (ticketId == null || toEmail == null) {
+      console.log("Why Am I here?");
+      return res.status(400).json({ error: 'Missing required parameters.'  });
     }
+
+    console.log("transfer", req.userId, ticketId, toEmail);
+    //get recipient user object
+
+
+    const toAddress = (await getWalletForEmail(toEmail)).address;
+    console.log("transfer", toAddress);
+    if (!toAddress) {
+      return res.status(400).json({ error: 'Recipient email not found.' });
+    }
+
+    const newUserInfo = {
+      name: toEmail,
+      email: toEmail
+    };
+
+
 
     const result = await ContractService.transferTicket(
       req.userId,
@@ -155,7 +179,7 @@ router.post('/transfer', authenticateToken, async (req, res) => {
   }
 });
 
-router.get('/me', authenticateToken, async (req, res) => {
+router.get('/me', responseTime,authenticateToken, async (req, res) => {
   try {
     const tickets = await ContractService.getUserTickets(req.userId);
     res.json({
@@ -171,6 +195,8 @@ router.get('/me', authenticateToken, async (req, res) => {
 });
 
 router.get('/:ticketId', authenticateToken, async (req, res) => {
+  console.log(req.userId, req.params.ticketId);
+  console.log(req.params);
   try {
     const ticket = await ContractService.getTicketDetails(
       req.userId,

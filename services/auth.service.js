@@ -31,3 +31,10 @@ export const signInUser = async (email, password) => {
   console.log(data);
   return { user: data.user, token: data.session.access_token };
 };
+
+export const signOutUser = async () => {
+  const { error } = await supabase.auth.signOut();
+  if (error) throw new Error(error.message);
+  return true;
+};
+

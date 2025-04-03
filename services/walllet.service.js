@@ -1,6 +1,7 @@
 import { ethers } from 'ethers';
 import { createClient } from '@supabase/supabase-js';
 import { ThirdwebSDK } from '@thirdweb-dev/sdk';
+import { getUserByEmail } from './user.service.js';
 
 const supabaseUrl = 'https://jtbwuldnjsavjukyxzto.supabase.co';
 const supabaseKey = process.env.SUPABASE_KEY;
@@ -34,6 +35,26 @@ export const getWalletForUser = async (userId) => {
   if (error) throw new Error(error.message);
   return data;
 };
+
+export const getWalletForEmail = async (email) => {
+  //get user id by email
+
+  const userId = await getUserByEmail(email);
+  console.log(userId);
+  if (userId === null) {
+    return res.status(400).json({ error: 'Recipient email not found.' });
+  }
+
+
+  const { data, error } = await supabase
+    .from('user_wallets')
+    .select('address')
+    .eq('user_id', userId)
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data;
+}
 
 
 const adminSDK = new ThirdwebSDK("mumbai", {
