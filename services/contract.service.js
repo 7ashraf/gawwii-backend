@@ -9,9 +9,13 @@ import { config } from "dotenv";
 import { Goerli } from "@thirdweb-dev/chains";
 import { LocalWalletNode } from "@thirdweb-dev/wallets/evm/wallets/local-wallet-node";
 // import { SmartWallet, SmartWalletConfig } from "@thirdweb-dev/wallets";
-import TicketFactory from "../TicketFactory.json" assert { type: "json" };
-import Marketplace from "../Marketplace.json" assert { type: "json" };
+// import TicketFactory from "../TicketFactory.json" assert { type: "json" };
+// import Marketplace from "../Marketplace.json" assert { type: "json" };
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
 
+const TicketFactory = require("../TicketFactory.json");
+const Marketplace = require("../Marketplace.json");
 
 const RPC_URL = process.env.RPC_URL;
 const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS;
