@@ -6,7 +6,9 @@
   "scripts": {
     "build": "echo 'Build complete'",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --forceExit --detectOpenHandles --setupFiles dotenv/config",
-    "start": "nodemon -r dotenv/config server.js"
+    "start": "nodemon -r dotenv/config server.js",
+    "start-prod": "node server.js"
+
   },
   "keywords": [],
   "author": "",

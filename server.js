@@ -44,7 +44,7 @@ app.use('/marketplace', marketplaceRoutes);
 
 // Only use app.listen in development, not for Vercel deployment
 if (process.env.NODE_ENV !== 'prod') {
-  const PORT = process.env.PORT || 3000;
+  const PORT = process.env.PORT || 3001;
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
