@@ -373,7 +373,11 @@ class ContractService {
     try {
       console.log("getTicketDetails", userId, ticketId);
       const userWallet = await getWalletForUser(userId);
-      const contract = await this.getContractWithSignerAdminEthers();
+
+      const { abi, address } = this.getContractConfig('ticket');
+
+
+      const contract = await this.getContractWithSignerAdminEthers(address, abi);
 
       const formattedTicketId = ethers.BigNumber.from(ticketId);
       console.log(formattedTicketId);
@@ -389,8 +393,8 @@ class ContractService {
         flightNumber: flight.flightNumber,
         departure: flight.departure,
         destination: flight.destination,
-        departureTime: new Date(flight.departureTime * 1000),
-        arrivalTime: new Date(flight.arrivalTime * 1000),
+        departureTime: flight.departureTime ,
+        arrivalTime: flight.arrivalTime ,
         seatNumber: metadata.seatNumber,
         status: metadata.isUsed ? 'used' : 'active',
         price: ethers.utils.formatEther(metadata.price),
@@ -426,6 +430,9 @@ class ContractService {
         const flightID = metadata[2];
         const flight = await contract["flights"](flightID);
 
+        console.log(flight.departureTime);
+        console.log(flight.arrivalTime);
+
 
         
         tickets.push({
@@ -433,8 +440,8 @@ class ContractService {
           flightNumber: flight.flightNumber,
           departure: flight.departure,
           destination: flight.destination,
-          departureTime: new Date(flight.departureTime * 1000),
-          arrivalTime: new Date(flight.arrivalTime * 1000),
+          departureTime: flight.departureTime,
+          arrivalTime: flight.arrivalTime,
           seatNumber: metadata.seatNumber,
           status: metadata.isUsed ? 'used' : 'active',
           price: ethers.utils.formatEther(metadata.price)

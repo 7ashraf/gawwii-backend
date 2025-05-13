@@ -202,6 +202,13 @@ router.get('/:ticketId', authenticateToken, async (req, res) => {
       req.userId,
       req.params.ticketId
     );
+
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+
+    console.log(ticket);
+
     
     res.json({
       success: true,
