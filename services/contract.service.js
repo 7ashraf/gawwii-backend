@@ -187,6 +187,9 @@ class ContractService {
 
       const tx = await contract[selectedFragment.format()](...args);
 
+      await tx.wait();
+
+
         // Wait for transaction confirmation
   
         return {
