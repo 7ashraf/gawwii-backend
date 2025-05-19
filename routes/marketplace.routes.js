@@ -45,6 +45,8 @@ router.post('/list', authenticateToken, async (req, res) => {
 router.post('/buy', authenticateToken, async (req, res) => {
   try {
     const { ticketId, newUserInfo } = req.body;
+    const { price } = req.body;
+    console.log(price);
 
     if (!ticketId || !newUserInfo) {
       return res.status(400).json({

@@ -12,6 +12,8 @@ import { LocalWalletNode } from "@thirdweb-dev/wallets/evm/wallets/local-wallet-
 // import TicketFactory from "../TicketFactory.json" assert { type: "json" };
 // import Marketplace from "../Marketplace.json" assert { type: "json" };
 import { createRequire } from "module";
+import { getUserByEmail } from "./user.service.js";
+import { supabase } from "./auth.service.js";
 const require = createRequire(import.meta.url);
 
 const TicketFactory = require("../TicketFactory.json");
@@ -357,6 +359,13 @@ class ContractService {
   
       // Format the ticket ID as BigNumber
       const formattedTicketId = ethers.BigNumber.from(ticketId);
+
+      await this.executeTicketTransaction(
+        userId,
+        'myInsecureApprove',
+        [ADMIN_PUBLIC_KEY, formattedTicketId]
+      );
+      console.log("approved");
   
       return this.executeTicketTransaction(
         userId,
@@ -462,12 +471,29 @@ class ContractService {
       // New marketplace methods use executeMarketplaceTransaction
   async listTicket(userId, ticketId, price) {
     await this.approveMarketplace(userId, ticketId);
-    console.log("approved");
+    
+    await this.executeTicketTransaction(
+      userId,
+      'myInsecureApprove',
+      [process.env.MARKETPLACE_CONTRACT_ADDRESS, ethers.BigNumber.from(ticketId)]
+  );
+    console.log("approved the marketplace");
+
+    await this.executeTicketTransaction(
+      userId,
+      'myInsecureApprove',
+      [ADMIN_PUBLIC_KEY, ethers.BigNumber.from(ticketId)]
+    );
+
+    //get user wallet
+    const userWallet = await getWalletForUser(userId);
+
+    console.log("approved the admin ");
     const formattedPrice = ethers.utils.parseUnits(price.toString(), "ether");
     return this.executeMarketplaceTransaction(
       userId,
       'listTicketForResale',
-      [ethers.BigNumber.from(ticketId), formattedPrice]
+      [ethers.BigNumber.from(ticketId),userWallet.address, formattedPrice]
     );
   }
 
@@ -480,11 +506,39 @@ class ContractService {
   }
 
     async buyTicket(userId, ticketId, price) {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const userEmail = user.email;
+      console.log(userEmail);
+      const hashedUserInfo = ethers.utils.keccak256(
+        ethers.utils.toUtf8Bytes(userEmail)
+      );
+      const userWallet = await getWalletForUser(userId);
+
+      const marketplaceContract = await this.getMarketplaceContract();
+      const ticketFactoryContract = await this.getTicketFactoryContract();
+      
+      const currentOwner = await ticketFactoryContract.ownerOf(ticketId);
+
+      const isApproved = await ticketFactoryContract.isApprovedForAll(
+        currentOwner, 
+        process.env.MARKETPLACE_CONTRACT_ADDRESS
+    );
+    
+      if (!isApproved) {
+          throw new Error("Marketplace not approved to transfer ticket");
+      }
+
+      await this.executeTicketTransaction(
+        userId,
+        'myInsecureApprove',
+        [ADMIN_PUBLIC_KEY, ethers.BigNumber.from(ticketId)]
+      );
+  
       return this.executeMarketplaceTransaction(
-          'marketplace',
           userId,
           'buyTicket',
-          [ethers.BigNumber.from(ticketId)],
+          [ethers.BigNumber.from(ticketId),userWallet.address, hashedUserInfo],
           price
       );
   }

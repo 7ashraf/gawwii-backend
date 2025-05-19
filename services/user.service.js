@@ -10,7 +10,7 @@ export const getUserByEmail = async (email) => {
   const { data, error } = await supabase.rpc(
     "get_user_id_by_email",
     {
-      email: "muhamed.ashrafahmed@gmail.com",
+      email: email
     }
   );
 

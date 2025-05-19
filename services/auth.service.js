@@ -5,7 +5,7 @@ import { createUserWallet } from './walllet.service.js';
 const supabaseUrl = 'https://jtbwuldnjsavjukyxzto.supabase.co';
 const supabaseKey = process.env.SUPABASE_KEY;
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+export const supabase = createClient(supabaseUrl, supabaseKey);
 
 export const createUser = async (email, password) => {
   console.log(email, password);
